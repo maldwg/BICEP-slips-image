@@ -1,0 +1,3 @@
+[submodule "bicep-slips/utils"]
+	path = bicep-slips/utils
+	url = https://github.com/maldwg/BICEP-utils
