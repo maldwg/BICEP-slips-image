@@ -10,3 +10,5 @@ COPY ./utils/ /opt/code/utils
 COPY ./src/ /opt/code/src
 
 RUN pip3 install -r requirements.txt
+
+CMD ["tail", "-f", "/dev/null"]
