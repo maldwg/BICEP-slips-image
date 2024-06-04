@@ -14,9 +14,12 @@ RUN mkdir /opt/code
 WORKDIR /opt/code
 
 COPY ./requirements.txt /opt/code/requirements.txt
-COPY ./utils/ /opt/code/utils
 COPY ./src/ /opt/code/src
+
+# path to locate the IDSBase implementation
+ENV IDS_MODULE=src.models.slips
+ENV IDS_CLASS=Slips
 
 RUN pip3 install -r requirements.txt
 
-CMD ["tail", "-f", "/dev/null"]
+CMD [ "/bin/bash","-c","fastapi dev /opt/code/src/main.py --host 0.0.0.0 --port ${PORT}" ]

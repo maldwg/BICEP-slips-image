@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import crud, ids, ensemble
+from src.utils.fastapi import routes
+
 app = FastAPI()
 
 origins = [
@@ -16,6 +17,4 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-async def get_test():
-    return {"message": "test"}
+app.include_router(routes.router)
