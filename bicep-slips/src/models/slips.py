@@ -1,17 +1,16 @@
 from  src.utils.models.ids_base import IDSBase
 from fastapi import UploadFile
-from src.utils.fastapi.routes import tell_core_analysis_has_finished
 import shutil
 import os
-from src.utils.fastapi.utils import stop_process, execute_command, wait_for_process_completion
+from src.utils.fastapi.utils import execute_command, wait_for_process_completion
 
 class Slips(IDSBase):
     configuration_location: str = "/tmp/slips.conf"
-    container_id: int = None
     pid: int = None
     # the interface to listen on in network analysis modes
     network_interface = "eth0"
     log_location: str = "/opt/logs"
+
 
     # unqiue variables
     working_dir = "/StratosphereLinuxIPS"
@@ -30,8 +29,6 @@ class Slips(IDSBase):
         return "No ruleset to patch"
     
     async def startNetworkAnalysis(self, container_id):
-        self.container_id = container_id
-
         # set network adapter to promiscuous mode
         command = ["ip", "link", "set", self.network_interface, "promisc", "on"]
         await execute_command(command)
@@ -44,20 +41,13 @@ class Slips(IDSBase):
 
 
     async def startStaticAnalysis(self, file_path, container_id):
-        self.container_id = container_id
         os.chdir(self.working_dir)
         command = ["./slips.py", "-c", self.configuration_location, "-f", file_path]
         pid = await execute_command(command)
         self.pid = pid
         await wait_for_process_completion(pid)
         await self.stopAnalysis()            
-    
-
-    
-    async def stopAnalysis(self):
-        await stop_process(self.pid)
-        self.pid = None
-        await tell_core_analysis_has_finished(container_id=self.container_id)
 
 
+# TODO: Stop is more sophisticated as there are many threads not just one
     
