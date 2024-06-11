@@ -9,18 +9,40 @@ class Slips(IDSBase):
     configuration_location: str = "/tmp/slips.conf"
     container_id: int = None
     pid: int = None
+    # the interface to listen on in network analysis modes
+    network_interface = "eth0"
+    log_location: str = "/opt/logs"
+
+    # unqiue variables
     working_dir = "/StratosphereLinuxIPS"
+
 
     async def configure(self, temporary_file):
         shutil.move(temporary_file, self.configuration_location)
-        return "succesfuly configured"
+        try:
+            os.mkdir(self.log_location)
+            return "succesfully configured"
+        except Exception as e:
+            print(e)
+            return e
     
     async def configure_ruleset(self, temporary_file):
         return "No ruleset to patch"
     
-    async def startNetworkAnalysis(self):
-        return "Started Network analysis"
-    
+    async def startNetworkAnalysis(self, container_id):
+        self.container_id = container_id
+
+        # set network adapter to promiscuous mode
+        command = ["ip", "link", "set", self.network_interface, "promisc", "on"]
+        await execute_command(command)
+
+        os.chdir(self.working_dir)
+        command = ["./slips.py", "-c", self.configuration_location, "-i", self.network_interface, "-o", self.log_location]
+        pid = await execute_command(command)
+        self.pid = pid
+        return {"message": f"started network analysis for container with {container_id}"}
+
+
     async def startStaticAnalysis(self, file_path, container_id):
         self.container_id = container_id
         os.chdir(self.working_dir)
