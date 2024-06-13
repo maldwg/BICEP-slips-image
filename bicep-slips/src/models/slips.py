@@ -28,7 +28,7 @@ class Slips(IDSBase):
     async def configure_ruleset(self, temporary_file):
         return "No ruleset to patch"
     
-    async def startNetworkAnalysis(self, container_id):
+    async def startNetworkAnalysis(self):
         # set network adapter to promiscuous mode
         command = ["ip", "link", "set", self.network_interface, "promisc", "on"]
         await execute_command(command)
@@ -37,10 +37,10 @@ class Slips(IDSBase):
         command = ["./slips.py", "-c", self.configuration_location, "-i", self.network_interface, "-o", self.log_location]
         pid = await execute_command(command)
         self.pid = pid
-        return {"message": f"started network analysis for container with {container_id}"}
+        return {"message": f"started network analysis for container with {self.container_id}"}
 
 
-    async def startStaticAnalysis(self, file_path, container_id):
+    async def startStaticAnalysis(self, file_path):
         os.chdir(self.working_dir)
         command = ["./slips.py", "-c", self.configuration_location, "-f", file_path]
         pid = await execute_command(command)
@@ -50,10 +50,11 @@ class Slips(IDSBase):
 
 
     # overrides the default method
+    # TODO: multiple threads need to be closed
     async def stopAnalysis(self):
         from src.utils.fastapi.utils import stop_process
         from src.utils.fastapi.routes import tell_core_analysis_has_finished
 
         await stop_process(self.pid)
         self.pid = None
-        await tell_core_analysis_has_finished()
+        await tell_core_analysis_has_finished(self)
