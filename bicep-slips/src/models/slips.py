@@ -49,5 +49,11 @@ class Slips(IDSBase):
         await self.stopAnalysis()            
 
 
-# TODO: Stop is more sophisticated as there are many threads not just one
-    
+    # overrides the default method
+    async def stopAnalysis(self):
+        from src.utils.fastapi.utils import stop_process
+        from src.utils.fastapi.routes import tell_core_analysis_has_finished
+
+        await stop_process(self.pid)
+        self.pid = None
+        await tell_core_analysis_has_finished()
