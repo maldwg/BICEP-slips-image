@@ -37,7 +37,7 @@ class Slips(IDSBase):
         command = ["./slips.py", "-c", self.configuration_location, "-i", self.network_interface, "-o", self.log_location]
         pid = await execute_command(command)
         self.pid = pid
-        return {"message": f"started network analysis for container with {self.container_id}"}
+        return f"started network analysis for container with {self.container_id}"
 
 
     async def startStaticAnalysis(self, file_path):
@@ -48,7 +48,6 @@ class Slips(IDSBase):
         await wait_for_process_completion(pid)
         await self.stopAnalysis()            
 
-
     # overrides the default method
     # TODO: multiple threads need to be closed
     async def stopAnalysis(self):
@@ -57,4 +56,4 @@ class Slips(IDSBase):
 
         await stop_process(self.pid)
         self.pid = None
-        await tell_core_analysis_has_finished(self)
+        return await tell_core_analysis_has_finished(self)
