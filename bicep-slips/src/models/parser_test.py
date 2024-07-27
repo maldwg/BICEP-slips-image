@@ -50,7 +50,6 @@ class SlipsParser(IDSParser):
                 parsed_lines.append(self.parse_line(line_as_json))
         return parsed_lines
     
-    # TODO 4. write slips network parser
     def parse_alerts_from_network_traffic():
         pass
 

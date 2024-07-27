@@ -2,6 +2,7 @@ from src.utils.models.ids_base import IDSParser, Alert
 import json 
 import os 
 from datetime import datetime
+import re
 
 class SlipsParser(IDSParser):
     
@@ -13,7 +14,7 @@ class SlipsParser(IDSParser):
         with open(file_location, "r") as file:
             for line in file:
                 line_as_json = json.loads(line)
-                parsed_lines.append(self.parse_line(line_as_json))
+                parsed_lines.append(await self.parse_line(line_as_json))
 
         # remove file to prevent double sending results after next execution
         os.remove(file_location)
@@ -27,7 +28,7 @@ class SlipsParser(IDSParser):
         with open(file_location, "r") as file:
             for line in file:
                 line_as_json = json.loads(line)
-                parsed_lines.append(self.parse_line(line_as_json))
+                parsed_lines.append(await self.parse_line(line_as_json))
 
         # remove file to prevent double sending results after next execution
         os.remove(file_location)
@@ -46,7 +47,30 @@ class SlipsParser(IDSParser):
             parsed_line.destination = ""
         parsed_line.message = line.get("Attach")[0].get("Content")
         parsed_line.type = line.get("Category")[0]
-        # TODO 6: find out scale and adapt to it  --> from 0 to 1 or 0 to 10 ??
-        parsed_line.severity = line.get("accumulated_threat_level")
+        # parse the nested threat level to a number
+        parsed_line.severity = await self.normalize_threat_levels(await self.get_threat_level(parsed_line.message))
 
         return parsed_line
+    
+    async def normalize_threat_levels(self, threat: int):
+        # threat levels are from 0 (info) to 4 (critical)
+        # parse the levels into numbers
+        max_level = 4
+        return round(threat / max_level,2)
+
+    async def get_threat_level(self, content: str):
+        # get everything after substring for threat level
+        re = re.seach(r'threat level: (\w+)', content)
+        match = re.group(1)
+
+        if match == "info":
+            return 0    
+        elif match == "low":
+            return 1
+        elif match == "medium":
+            return 2
+        elif match == "high":
+            return 3
+        elif match == "critical":
+            return 4 
+        
