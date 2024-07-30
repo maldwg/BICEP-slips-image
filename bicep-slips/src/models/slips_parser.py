@@ -24,7 +24,7 @@ class SlipsParser(IDSParser):
     async def parse_line(self, line):
         parsed_line = Alert()
         # todo: check if Is detect time now correctt in slips? --> it is not --> check if necessaray and use other tehniques
-        parsed_line.time = datetime.strptime(line.get("DetectTime"), self.timestamp_format) 
+        parsed_line.time = line.get("DetectTime")
         # since it is an array, acces the first element, then get the ip, the result is also in an array
         parsed_line.source = line.get("Source")[0].get("IP4")[0]
         try:
