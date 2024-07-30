@@ -48,7 +48,7 @@ class Slips(IDSBase):
 
     async def startStaticAnalysis(self, file_path):
         os.chdir(self.working_dir)
-        command = ["./slips.py", "-c", self.configuration_location, "-f", file_path]
+        command = ["./slips.py", "-c", self.configuration_location, "-f", file_path, "-o", self.log_location]
         pid = await execute_command(command)
         self.pid = pid
         await wait_for_process_completion(pid)
