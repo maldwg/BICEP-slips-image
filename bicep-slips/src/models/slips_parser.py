@@ -5,9 +5,9 @@ from datetime import datetime
 import re
 
 class SlipsParser(IDSParser):
-    
-    alertFileLocation = ""
-    async def parse_alerts_from_network_traffic(self, file_location=alertFileLocation):
+    # TODO: go voer all log files instead of the main one if existing
+    alertFileLocation = "/opt/logs/slips.log"
+    async def parse_alerts(self, file_location=alertFileLocation):
         
         parsed_lines = []
 
@@ -21,19 +21,6 @@ class SlipsParser(IDSParser):
     
         return parsed_lines
     
-    # TODO 11: Either refactor so that only one parse mtehod exists (botha re equivalent) or identify things that the modes seperate from each other
-    async def parse_alerts_from_network_traffic(self, file_location=alertFileLocation):
-        parsed_lines = []
-
-        with open(file_location, "r") as file:
-            for line in file:
-                line_as_json = json.loads(line)
-                parsed_lines.append(await self.parse_line(line_as_json))
-
-        # remove file to prevent double sending results after next execution
-        os.remove(file_location)
-    
-        return parsed_lines
     async def parse_line(self, line):
         parsed_line = Alert()
         # todo: check if Is detect time now correctt in slips? --> it is not --> check if necessaray and use other tehniques

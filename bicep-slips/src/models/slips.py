@@ -3,7 +3,7 @@ from  src.utils.models.ids_base import Alert, IDSBase
 from fastapi import UploadFile
 import shutil
 import os
-from src.utils.fastapi.utils import execute_command, wait_for_process_completion
+from src.utils.fastapi.utils import execute_command, wait_for_process_completion, send_alerts_to_core, send_alerts_to_core_periodically
 from .slips_parser import SlipsParser
 
 class Slips(IDSBase):
@@ -41,27 +41,24 @@ class Slips(IDSBase):
         pid = await execute_command(command)
         self.pid = pid
 
-        self.send_alerts_task = asyncio.create_task(self.parser.parse_alerts_from_network_traffic())
+        self.send_alerts_task = asyncio.create_task(send_alerts_to_core_periodically(ids=self))
         
         return f"started network analysis for container with {self.container_id}"
 
 
     async def startStaticAnalysis(self, file_path):
-        from src.utils.fastapi.routes import send_alerts_to_core
         os.chdir(self.working_dir)
         command = ["./slips.py", "-c", self.configuration_location, "-f", file_path]
         pid = await execute_command(command)
         self.pid = pid
         await wait_for_process_completion(pid)
-        alerts: list[Alert] = await self.parser.parse_alerts_from_file()
-        await send_alerts_to_core(ids=self, alerts=alerts, analysis_type="static")
+        await send_alerts_to_core(ids=self)
         await self.stopAnalysis()            
 
     # overrides the default method
     # TODO: multiple threads need to be closed
     async def stopAnalysis(self):
-        from src.utils.fastapi.utils import stop_process
-        from src.utils.fastapi.routes import tell_core_analysis_has_finished
+        from src.utils.fastapi.utils import stop_process, tell_core_analysis_has_finished
 
         await stop_process(self.pid)
         await self.send_alerts_task.cancel()
