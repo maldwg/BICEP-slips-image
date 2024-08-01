@@ -6,7 +6,7 @@ import re
 
 class SlipsParser(IDSParser):
     # TODO: go voer all log files instead of the main one if existing
-    alertFileLocation = "/opt/logs/slips.log"
+    alertFileLocation = "/opt/logs/alerts.json"
     async def parse_alerts(self, file_location=alertFileLocation):
         
         parsed_lines = []
