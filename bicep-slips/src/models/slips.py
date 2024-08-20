@@ -8,8 +8,6 @@ from .slips_parser import SlipsParser
 
 class Slips(IDSBase):
     configuration_location: str = "/tmp/slips.conf"
-    pid: int = None
-    send_alerts_task = None
     # the interface to listen on in network analysis modes
     network_interface = "eth0"
     log_location: str = "/opt/logs"
@@ -41,7 +39,7 @@ class Slips(IDSBase):
         pid = await execute_command(command)
         self.pid = pid
 
-        self.send_alerts_task = asyncio.create_task(send_alerts_to_core_periodically(ids=self))
+        self.send_alerts_periodically_task = asyncio.create_task(send_alerts_to_core_periodically(ids=self))
         
         return f"started network analysis for container with {self.container_id}"
 
@@ -52,15 +50,24 @@ class Slips(IDSBase):
         pid = await execute_command(command)
         self.pid = pid
         await wait_for_process_completion(pid)
-        await send_alerts_to_core(ids=self)
+        self.pid = None
+        # if analysis has not been cancled while running
+        if self.static_analysis_running:
+            await send_alerts_to_core(ids=self)
         await self.stopAnalysis()            
 
     # overrides the default method
-    # TODO: multiple threads need to be closed
+    # TODO 10: multiple threads need to be closed
     async def stopAnalysis(self):
         from src.utils.fastapi.utils import stop_process, tell_core_analysis_has_finished
 
-        await stop_process(self.pid)
-        await self.send_alerts_task.cancel()
-        self.pid = None
-        return await tell_core_analysis_has_finished(self)
+        self.static_analysis_running = False
+        if self.pid != None:
+            await stop_process(self.pid)
+            self.pid = None
+        if self.send_alerts_periodically_task != None:            
+            print(self.send_alerts_periodically_task)
+            if not self.send_alerts_periodically_task.done():
+                self.send_alerts_periodically_task.cancel()
+            self.send_alerts_periodically_task = None
+        await tell_core_analysis_has_finished(self)
