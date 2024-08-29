@@ -40,6 +40,8 @@ class Slips(IDSBase):
         self.pids.append(pid)
 
         self.send_alerts_periodically_task = asyncio.create_task(send_alerts_to_core_periodically(ids=self))
+        print("task:")
+        print(self.send_alerts_periodically_task)
         
         return f"started network analysis for container with {self.container_id}"
 
