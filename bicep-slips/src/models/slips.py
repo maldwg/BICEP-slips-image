@@ -1,9 +1,9 @@
 import asyncio
-from  src.utils.models.ids_base import Alert, IDSBase
-from fastapi import UploadFile
+from  src.utils.models.ids_base import IDSBase
 import shutil
 import os
-from src.utils.fastapi.utils import execute_command, wait_for_process_completion, send_alerts_to_core, send_alerts_to_core_periodically
+from src.utils.general_utilities import create_and_activate_network_interface,remove_network_interface,mirror_network_traffic_to_interface,execute_command, wait_for_process_completion
+from src.utils.fastapi.utils import send_alerts_to_core, send_alerts_to_core_periodically
 from .slips_parser import SlipsParser
 
 class Slips(IDSBase):
@@ -30,14 +30,14 @@ class Slips(IDSBase):
         return "No ruleset to patch"
     
     async def startNetworkAnalysis(self):
-        # set network adapter to promiscuous mode
-        command = ["ip", "link", "set", self.network_interface, "promisc", "on"]
-        await execute_command(command)
-
+        self.tap_interface_name = f"tap{self.container_id}"
+        await create_and_activate_network_interface(self.tap_interface_name)
+        pid = await mirror_network_traffic_to_interface(default_interface="eth0", tap_interface=self.tap_interface_name)
+        self.pids.append(pid)
         os.chdir(self.working_dir)
-        command = ["./slips.py", "-c", self.configuration_location, "-i", self.network_interface, "-o", self.log_location]
-        pid = await execute_command(command)
-        self.pid = pid
+        start_slips = ["./slips.py", "-c", self.configuration_location, "-i", self.tap_interface_name, "-o", self.log_location]
+        pid = await execute_command(start_slips)
+        self.pids.append(pid)
 
         self.send_alerts_periodically_task = asyncio.create_task(send_alerts_to_core_periodically(ids=self))
         
@@ -48,9 +48,9 @@ class Slips(IDSBase):
         os.chdir(self.working_dir)
         command = ["./slips.py", "-c", self.configuration_location, "-f", file_path, "-o", self.log_location]
         pid = await execute_command(command)
-        self.pid = pid
+        self.pids.append(pid)
         await wait_for_process_completion(pid)
-        self.pid = None
+        self.pids.remove(pid)
         # if analysis has not been cancled while running
         if self.static_analysis_running:
             await send_alerts_to_core(ids=self)
@@ -59,15 +59,15 @@ class Slips(IDSBase):
     # overrides the default method
     # TODO 10: multiple threads need to be closed
     async def stopAnalysis(self):
-        from src.utils.fastapi.utils import stop_process, tell_core_analysis_has_finished
+        from src.utils.fastapi.utils import tell_core_analysis_has_finished
 
         self.static_analysis_running = False
-        if self.pid != None:
-            await stop_process(self.pid)
-            self.pid = None
+        await self.stop_all_processes()
         if self.send_alerts_periodically_task != None:            
             print(self.send_alerts_periodically_task)
             if not self.send_alerts_periodically_task.done():
                 self.send_alerts_periodically_task.cancel()
             self.send_alerts_periodically_task = None
+        if self.tap_interface_name != None:
+            await remove_network_interface(self.tap_interface_name)
         await tell_core_analysis_has_finished(self)
