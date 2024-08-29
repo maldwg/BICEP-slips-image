@@ -31,7 +31,16 @@ class SlipsParser(IDSParser):
                         print(f"could not parse line {line} \n ... skipping")
                         continue
                     timestamp_file_line = timestamp_file_content[line_counter]
-                    timestamp = datetime.fromisoformat(timestamp_file_line.split(" ")[0]).replace(tzinfo=None)
+                    if "Generated an alert given enough evidence" in timestamp_file_line:
+                        malformed_timestamp = timestamp_file_line.split(" ")[0]
+                        if malformed_timestamp[-1] == ":":
+                        # since there is a : at the end of the timestamp for each alert generated, the : needs to be removed
+                            timestamp = malformed_timestamp.rsplit(":", maxsplit=1)[0]
+                        else: 
+                            # handle to be able to process any alert line further if there is an update on slips to fix the malform issue
+                            timestamp = malformed_timestamp
+                    else:
+                        timestamp = datetime.fromisoformat(timestamp_file_line.split(" ")[0]).replace(tzinfo=None)
                     parsed_lines.append(await self.parse_line_for_static_analysis(line_as_json, timestamp))
                     line_counter += 1
             timestamp_file.close()
