@@ -7,9 +7,8 @@ from src.utils.fastapi.utils import send_alerts_to_core, send_alerts_to_core_per
 from .slips_parser import SlipsParser
 
 class Slips(IDSBase):
-    configuration_location: str = "/tmp/slips.conf"
+    configuration_location: str = "/tmp/slips.yaml"
     # the interface to listen on in network analysis modes
-    network_interface = "eth0"
     log_location: str = "/opt/logs"
 
     # unqiue variables
@@ -19,6 +18,8 @@ class Slips(IDSBase):
 
     async def configure(self, temporary_file):
         shutil.move(temporary_file, self.configuration_location)
+        self.tap_interface_name = f"tap{self.container_id}"
+
         try:
             os.mkdir(self.log_location)
             return "succesfully configured"
@@ -30,7 +31,6 @@ class Slips(IDSBase):
         return "No ruleset to patch"
     
     async def startNetworkAnalysis(self):
-        self.tap_interface_name = f"tap{self.container_id}"
         await create_and_activate_network_interface(self.tap_interface_name)
         pid = await mirror_network_traffic_to_interface(default_interface="eth0", tap_interface=self.tap_interface_name)
         self.pids.append(pid)
@@ -59,7 +59,6 @@ class Slips(IDSBase):
         await self.stopAnalysis()            
 
     # overrides the default method
-    # TODO 10: multiple threads need to be closed
     async def stopAnalysis(self):
         from src.utils.fastapi.utils import tell_core_analysis_has_finished
 

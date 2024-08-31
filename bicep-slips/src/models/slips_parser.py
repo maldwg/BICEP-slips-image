@@ -2,96 +2,79 @@ from src.utils.models.ids_base import IDSParser, Alert
 import json 
 import os 
 import os.path
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 from ..utils.general_utilities import ANALYSIS_MODES
+from .utils import DatabaseDumper, db_entry_to_hashmap
+import ast
 
 class SlipsParser(IDSParser):
-    # TODO 10: go voer all log files instead of the main one if existing
+    database_path = "/opt/logs/flows.sqlite"
+    database_dumper = DatabaseDumper(db_path=database_path)
     alert_file_location = "/opt/logs/alerts.json"
-    alert_file_location_with_correct_timestamps = "/opt/logs/alerts.log"
+    flows_as_hashmap = {}
 
     async def parse_alerts(self, analysis_mode: ANALYSIS_MODES, file_location=alert_file_location):
-        # TODO 5: ADD try except block and delete files if except to regenerate automatically
-        parsed_lines = []
-        line_counter = 0
-    
+        parsed_lines = []   
 
-        if not os.path.isfile(file_location) or not os.path.isfile(self.alert_file_location_with_correct_timestamps):
+        if not os.path.isfile(file_location) or not os.path.isfile(self.database_path):
             return parsed_lines
 
-        if analysis_mode == ANALYSIS_MODES.STATIC.value:
-            timestamp_file = open(self.alert_file_location_with_correct_timestamps)
-            timestamp_file_content = timestamp_file.readlines()
-            with open(file_location, "r") as alerts:
-                for line in alerts:
-                    try:
-                        line_as_json = json.loads(line)
-                    except:
-                        print(f"could not parse line {line} \n ... skipping")
-                        continue
-                    timestamp_file_line = timestamp_file_content[line_counter]
-                    if "Generated an alert given enough evidence" in timestamp_file_line:
-                        malformed_timestamp = timestamp_file_line.split(" ")[0]
-                        if malformed_timestamp[-1] == ":":
-                        # since there is a : at the end of the timestamp for each alert generated, the : needs to be removed
-                            timestamp = malformed_timestamp.rsplit(":", maxsplit=1)[0]
-                        else: 
-                            # handle to be able to process any alert line further if there is an update on slips to fix the malform issue
-                            timestamp = malformed_timestamp
-                    else:
-                        timestamp = datetime.fromisoformat(timestamp_file_line.split(" ")[0]).replace(tzinfo=None)
-                    parsed_lines.append(await self.parse_line_for_static_analysis(line_as_json, timestamp))
-                    line_counter += 1
-            timestamp_file.close()
-        elif analysis_mode == ANALYSIS_MODES.NETWORK.value:
-            with open(file_location, "r") as alerts:
-                for line in alerts:
-                    try:
-                        line_as_json = json.loads(line)
-                    except:
-                        print(f"could not parse line {line} \n ... skipping")
-                        continue
-                    parsed_lines.append(await self.parse_line(line_as_json))
+        recognized_flows = self.database_dumper.return_table_as_dicts()
+        self.flows_as_hashmap = db_entry_to_hashmap(recognized_flows)
+
+        with open(file_location, "r") as alerts:
+            for line in alerts:
+                try:
+                    line_as_json = json.loads(line)
+                except:
+                    print(f"could not parse line {line} \n ... skipping")
+                    continue
+                # at least one flow/request is assigned to the alert/evidence
+                uids = line_as_json["uids"]
+                for uid in uids:
+                    print("try to parse the line")
+                    parsed_lines.append(await self.parse_line(line_as_json, uid))
+
+
+                    
         # erase files content but do not delete the file itself
         open(file_location, 'w').close()
-        open(self.alert_file_location_with_correct_timestamps, 'w').close()
+        self.database_dumper.cleanup_table()
+
+        print(30*"---")
+        print(f"returned lines")
+        print(parsed_lines)
+
         return parsed_lines
-    
-    async def parse_line(self, line):
+
+    async def parse_line(self, line, uid):
         parsed_line = Alert()
-        parsed_line.time = line.get("DetectTime")
-        # since it is an array, acces the first element, then get the ip, the result is also in an array
-        parsed_line.source = line.get("Source")[0].get("IP4")[0]
-        try:
-            parsed_line.destination = line.get("Target")[0].get("IP4")[0]
-        except TypeError as e:
-            # many time there is no target, hence leave the information empty then
-            parsed_line.destination = ""
+
+        flow_information_string = self.flows_as_hashmap[uid]
+        flow_information = ast.literal_eval(flow_information_string)
+
+        # get available infor from db
+        timestamp = flow_information["starttime"]
+        parsed_timestamp = datetime.fromtimestamp(timestamp, timezone.utc).replace(tzinfo=None).isoformat()
+        source_ip = flow_information["saddr"]
+        source_port = str(flow_information["sport"])
+        destination_ip = flow_information["daddr"]
+        destination_port = str(flow_information["dport"])
+        parsed_line.time = parsed_timestamp
+        parsed_line.source_ip = source_ip
+        parsed_line.source_port = source_port
+        parsed_line.destination_ip = destination_ip
+        parsed_line.destination_port = destination_port
+
+        # get the rest of the information from alerts.json
         parsed_line.message = line.get("Attach")[0].get("Content")
         parsed_line.type = line.get("Category")[0]
         # parse the nested threat level to a number
         parsed_line.severity = await self.normalize_threat_levels(await self.get_threat_level(line))
-
+        print(parsed_line)
         return parsed_line
-    
-    async def parse_line_for_static_analysis(self, line, timestamp):
-        parsed_line = Alert()
-        # todo: check if Is detect time now correctt in slips? --> it is not --> check if necessaray and use other tehniques
-        parsed_line.time = str(timestamp)
-        # since it is an array, acces the first element, then get the ip, the result is also in an array
-        parsed_line.source = line.get("Source")[0].get("IP4")[0]
-        try:
-            parsed_line.destination = line.get("Target")[0].get("IP4")[0]
-        except TypeError as e:
-            # many time there is no target, hence leave the information empty then
-            parsed_line.destination = ""
-        parsed_line.message = line.get("Attach")[0].get("Content")
-        parsed_line.type = line.get("Category")[0]
-        # parse the nested threat level to a number
-        parsed_line.severity = await self.normalize_threat_levels(await self.get_threat_level(line))
-
-        return parsed_line
+     
     
     async def normalize_threat_levels(self, threat: int):
         # threat levels are from 0 (info) to 4 (critical)
@@ -116,13 +99,9 @@ class SlipsParser(IDSParser):
                 return 4 
         # As alert lines will not have this info but rather a normal threat_level, use that instead
         except Exception as e:
-            try:
-                threat_level = line.get("threat_level")
-                # TODO 8: how to scale the threat level correctly??
-                return int(threat_level)
-            except Exception as e:
-                print(f"Could not determine threat level for line {line}")
-                raise e
+            print(f"Could not determine threat level for line {line}, using lowest level now")
+            return 0
+
 
 
         
