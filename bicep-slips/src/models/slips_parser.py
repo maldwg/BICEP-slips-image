@@ -14,10 +14,10 @@ class SlipsParser(IDSParser):
     alert_file_location = "/opt/logs/alerts.json"
     flows_as_hashmap = {}
 
-    async def parse_alerts(self, analysis_mode: ANALYSIS_MODES, file_location=alert_file_location):
+    async def parse_alerts(self):
         parsed_lines = []   
 
-        if not os.path.isfile(file_location) or not os.path.isfile(self.database_path):
+        if not os.path.isfile(self.alert_file_location) or not os.path.isfile(self.database_path):
             return parsed_lines
 
         recognized_flows = self.database_dumper.return_table_as_dicts()
@@ -30,7 +30,7 @@ class SlipsParser(IDSParser):
         except:
             print("could not write file")
 
-        with open(file_location, "r") as alerts:
+        with open(self.alert_file_location, "r") as alerts:
             for line in alerts:
                 try:
                     line_as_json = json.loads(line)
@@ -48,7 +48,7 @@ class SlipsParser(IDSParser):
 
                     
         # erase files content but do not delete the file itself
-        open(file_location, 'w').close()
+        open(self.alert_file_location, 'w').close()
         self.database_dumper.cleanup_table()
 
         print(30*"---")
