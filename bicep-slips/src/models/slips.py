@@ -3,7 +3,6 @@ from  src.utils.models.ids_base import IDSBase
 import shutil
 import os
 from src.utils.general_utilities import create_and_activate_network_interface,remove_network_interface,mirror_network_traffic_to_interface,execute_command, wait_for_process_completion
-from src.utils.fastapi.utils import send_alerts_to_core, send_alerts_to_core_periodically
 from .slips_parser import SlipsParser
 
 class Slips(IDSBase):
@@ -27,10 +26,11 @@ class Slips(IDSBase):
             print(e)
             return e
     
+    # method needs to be implemented,even if it does nothing
     async def configure_ruleset(self, temporary_file):
-        return "No ruleset to patch"
+        pass
     
-    async def startNetworkAnalysis(self):
+    async def start_network_analysis(self):
         await create_and_activate_network_interface(self.tap_interface_name)
         pid = await mirror_network_traffic_to_interface(default_interface="eth0", tap_interface=self.tap_interface_name)
         self.pids.append(pid)
@@ -39,14 +39,14 @@ class Slips(IDSBase):
         pid = await execute_command(start_slips)
         self.pids.append(pid)
 
-        self.send_alerts_periodically_task = asyncio.create_task(send_alerts_to_core_periodically(ids=self))
+        self.send_alerts_periodically_task = asyncio.create_task(self.send_alerts_to_core_periodically())
         print("task:")
         print(self.send_alerts_periodically_task)
         
         return f"started network analysis for container with {self.container_id}"
 
 
-    async def startStaticAnalysis(self, file_path):
+    async def start_static_analysis(self, file_path):
         os.chdir(self.working_dir)
         command = ["./slips.py", "-c", self.configuration_location, "-f", file_path, "-o", self.log_location]
         pid = await execute_command(command)
@@ -55,13 +55,15 @@ class Slips(IDSBase):
         self.pids.remove(pid)
         # if analysis has not been cancled while running
         if self.static_analysis_running:
-            await send_alerts_to_core(ids=self)
-        await self.stopAnalysis()            
+            task= asyncio.create_task(self.finish_static_analysis_in_background())
+            self.background_tasks.add(task)
+            print(task)
+            task.add_done_callback(self.background_tasks.discard)
+        else: 
+            await self.stop_analysis()            
 
     # overrides the default method
-    async def stopAnalysis(self):
-        from src.utils.fastapi.utils import tell_core_analysis_has_finished
-
+    async def stop_analysis(self):
         self.static_analysis_running = False
         await self.stop_all_processes()
         if self.send_alerts_periodically_task != None:            
@@ -71,4 +73,4 @@ class Slips(IDSBase):
             self.send_alerts_periodically_task = None
         if self.tap_interface_name != None:
             await remove_network_interface(self.tap_interface_name)
-        await tell_core_analysis_has_finished(self)
+        await self.tell_core_analysis_has_finished()

@@ -22,6 +22,13 @@ class SlipsParser(IDSParser):
 
         recognized_flows = self.database_dumper.return_table_as_dicts()
         self.flows_as_hashmap = db_entry_to_hashmap(recognized_flows)
+        # debug
+        try: 
+            f = open("/tmp/hashmap.txt", "a")
+            f.write(json.dumps(self.flows_as_hashmap))
+            f.close()
+        except:
+            print("could not write file")
 
         with open(file_location, "r") as alerts:
             for line in alerts:
@@ -34,7 +41,9 @@ class SlipsParser(IDSParser):
                 uids = line_as_json["uids"]
                 for uid in uids:
                     print("try to parse the line")
-                    parsed_lines.append(await self.parse_line(line_as_json, uid))
+                    parsed_line = await self.parse_line(line_as_json, uid)
+                    if parsed_line != None:
+                        parsed_lines.append(parsed_line)
 
 
                     
@@ -50,8 +59,12 @@ class SlipsParser(IDSParser):
 
     async def parse_line(self, line, uid):
         parsed_line = Alert()
-
-        flow_information_string = self.flows_as_hashmap[uid]
+        try:
+            flow_information_string = self.flows_as_hashmap[uid]
+        except:
+            print("could not find uid in hashmap")
+            print(uid)
+            return None
         flow_information = ast.literal_eval(flow_information_string)
 
         # get available infor from db
@@ -66,6 +79,12 @@ class SlipsParser(IDSParser):
         parsed_line.source_port = source_port
         parsed_line.destination_ip = destination_ip
         parsed_line.destination_port = destination_port
+
+
+        # only include alerts that have a chance to be matched to the csv files
+        # removing them here does nothing, as they youldn be matched anyways and wouldn't affect the statistics besides unassigned_requests 
+        if not parsed_line.time or not parsed_line.source_ip or not parsed_line.source_port or not parsed_line.destination_ip or not parsed_line.destination_port:
+            return None
 
         # get the rest of the information from alerts.json
         parsed_line.message = line.get("Attach")[0].get("Content")
