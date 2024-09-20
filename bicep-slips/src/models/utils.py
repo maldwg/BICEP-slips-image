@@ -27,16 +27,17 @@ class DatabaseDumper():
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(delete_query)
+        conn.close()
 
 
     def get_connection(self):
         conn = sqlite3.connect(self.db_path)
         return conn
 
-def db_entry_to_hashmap(db_entries: list):
-    hashmap = {}
-    for entry in db_entries:
-        key = entry["uid"]
-        value = entry["flow"]
-        hashmap[key] = value
-    return hashmap
+    def convert_db_entry_to_hashmap(self, db_entries: list):
+        hashmap = {}
+        for entry in db_entries:
+            key = entry["uid"]
+            value = entry["flow"]
+            hashmap[key] = value
+        return hashmap

@@ -4,8 +4,7 @@ import os
 import os.path
 from datetime import datetime, timezone
 import re
-from ..utils.general_utilities import ANALYSIS_MODES
-from .utils import DatabaseDumper, db_entry_to_hashmap
+from .utils import DatabaseDumper
 import ast
 
 class SlipsParser(IDSParser):
@@ -15,21 +14,18 @@ class SlipsParser(IDSParser):
     flows_as_hashmap = {}
 
     async def parse_alerts(self):
+        import time
+        start = time.time()
         parsed_lines = []   
 
         if not os.path.isfile(self.alert_file_location) or not os.path.isfile(self.database_path):
+            print(f"files not found, took {time.time() - start} seconds")
             return parsed_lines
 
         recognized_flows = self.database_dumper.return_table_as_dicts()
-        self.flows_as_hashmap = db_entry_to_hashmap(recognized_flows)
-        # debug
-        try: 
-            f = open("/tmp/hashmap.txt", "a")
-            f.write(json.dumps(self.flows_as_hashmap))
-            f.close()
-        except:
-            print("could not write file")
-
+        print(f"return table as dict {time.time() - start} seconds")
+        self.flows_as_hashmap = self.database_dumper.convert_db_entry_to_hashmap(recognized_flows)
+        print(f"converted flows took {time.time() - start} seconds")
         with open(self.alert_file_location, "r") as alerts:
             for line in alerts:
                 try:
@@ -40,13 +36,12 @@ class SlipsParser(IDSParser):
                 # at least one flow/request is assigned to the alert/evidence
                 uids = line_as_json["uids"]
                 for uid in uids:
-                    print("try to parse the line")
                     parsed_line = await self.parse_line(line_as_json, uid)
                     if parsed_line != None:
                         parsed_lines.append(parsed_line)
 
 
-                    
+        print(f"finished iterations in {time.time() - start} seconds")
         # erase files content but do not delete the file itself
         open(self.alert_file_location, 'w').close()
         self.database_dumper.cleanup_table()
@@ -54,7 +49,11 @@ class SlipsParser(IDSParser):
         print(30*"---")
         print(f"returned lines")
         print(parsed_lines)
-
+        print(f"successfully finished, took {time.time() - start} seconds")
+        try:
+            print(f"DEBUG: task health: {self.send_alerts_periodically_task}")
+        except:
+            pass
         return parsed_lines
 
     async def parse_line(self, line, uid):
