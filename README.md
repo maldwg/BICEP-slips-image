@@ -14,3 +14,12 @@ git submodule init
 git submodule update
 ```
 This fetches the newest version of the submodule for the backend code and is necessary for the application to work seamlessly.
+
+
+## Building the project
+TO build a local version of the image for testing purposes, simply run:
+``` 
+cd ./bicep-slips
+docker buildx build . --build-arg BASE_IMAGE=stratosphereips/slips --build-arg VERSION=1.1.2 -t maxldwg/bicep-slips:latest --no-cache
+```
+Change the version to your desried one
