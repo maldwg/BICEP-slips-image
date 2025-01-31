@@ -1,3 +1,11 @@
+<div align="center">
+<img alt="Docker Image Version (tag)" src="https://img.shields.io/docker/v/maxldwg/bicep-slips/latest?style=for-the-badge&logo=docker&label=Latest%20Version&link=https%3A%2F%2Fhub.docker.com%2Fr%2Fmaxldwg%2Fbicep-slips">
+<img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/maxldwg/bicep-slips?style=for-the-badge&logo=docker&logoColor=blue&link=https%3A%2F%2Fhub.docker.com%2Fr%2Fmaxldwg%2Fbicep-slips">
+
+<br>
+
+</div>
+
 # BICEP-slips-image
 Slips image adapted for BICEP 
 
