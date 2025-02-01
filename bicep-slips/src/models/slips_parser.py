@@ -98,6 +98,9 @@ class SlipsParser(IDSParser):
         # threat levels are from 0 (info) to 4 (critical)
         # parse the levels into numbers
         max_level = 4
+        if threat is None or threat > max_level:
+            # Unexpected high value
+            return None
         return round(threat / max_level,2)
 
     async def get_threat_level(self, line: str, ):
