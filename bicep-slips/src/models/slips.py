@@ -17,8 +17,6 @@ class Slips(IDSBase):
 
     async def configure(self, temporary_file):
         shutil.move(temporary_file, self.configuration_location)
-        self.tap_interface_name = f"tap{self.container_id}"
-
         try:
             os.mkdir(self.log_location)
             return "succesfully configured"

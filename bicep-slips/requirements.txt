@@ -1,3 +1,6 @@
 fastapi[all]
 psutil
 python-dateutil
+pytest
+pytest-cov
+pytest-asyncio

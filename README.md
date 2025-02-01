@@ -1,7 +1,8 @@
 <div align="center">
 <img alt="Docker Image Version (tag)" src="https://img.shields.io/docker/v/maxldwg/bicep-slips/latest?style=for-the-badge&logo=docker&label=Latest%20Version&link=https%3A%2F%2Fhub.docker.com%2Fr%2Fmaxldwg%2Fbicep-slips">
 <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/maxldwg/bicep-slips?style=for-the-badge&logo=docker&logoColor=blue&link=https%3A%2F%2Fhub.docker.com%2Fr%2Fmaxldwg%2Fbicep-slips">
-
+<img alt="Codecov" src="https://img.shields.io/codecov/c/github/maldwg/BICEP-slips?style=for-the-badge">
+<img alt="GitHub branch status" src="https://img.shields.io/github/checks-status/maldwg/BICEP-slips/main?style=for-the-badge&label=Tests">
 <br>
 
 </div>
