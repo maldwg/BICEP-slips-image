@@ -4,3 +4,4 @@ python-dateutil
 pytest
 pytest-cov
 pytest-asyncio
+setuptools
