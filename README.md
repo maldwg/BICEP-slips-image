@@ -29,6 +29,6 @@ This fetches the newest version of the submodule for the backend code and is nec
 TO build a local version of the image for testing purposes, simply run:
 ``` 
 cd ./bicep-slips
-docker buildx build . --build-arg BASE_IMAGE=stratosphereips/slips --build-arg VERSION=1.1.2 -t maxldwg/bicep-slips:latest --no-cache
+docker buildx build . --build-arg BASE_IMAGE=stratosphereips/slips --build-arg VERSION=1.1.9 -t maxldwg/bicep-slips:latest --no-cache
 ```
 Change the version to your desried one

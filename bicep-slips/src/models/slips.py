@@ -2,8 +2,10 @@ import asyncio
 from  src.utils.models.ids_base import IDSBase
 import shutil
 import os
-from src.utils.general_utilities import execute_command
+from src.utils.general_utilities import exececute_command_sync_in_seperate_thread
 from .slips_parser import SlipsParser
+from concurrent.futures import ProcessPoolExecutor
+import subprocess
 
 class Slips(IDSBase):
     configuration_location: str = "/tmp/slips.yaml"
@@ -24,18 +26,29 @@ class Slips(IDSBase):
             print(e)
             return e
     
-    # method needs to be implemented,even if it does nothing
+    # method needs to be implemented,even if slips does not feature rulesets
     async def configure_ruleset(self, temporary_file):
         pass
     
     async def execute_network_analysis_command(self):
-        os.chdir(self.working_dir)
-        start_slips = ["./slips.py", "-c", self.configuration_location, "-i", self.tap_interface_name, "-o", self.log_location]
-        pid = await execute_command(start_slips)
+        command = ["./slips.py", "-c", self.configuration_location, "-i", self.tap_interface_name, "-o", self.log_location]
+        loop = asyncio.get_event_loop()
+        pid = await loop.run_in_executor(
+            None,
+            exececute_command_sync_in_seperate_thread,
+            command,
+            self.working_dir
+        )
         return pid
 
     async def execute_static_analysis_command(self, file_path):
-        os.chdir(self.working_dir)
         command = ["./slips.py", "-c", self.configuration_location, "-f", file_path, "-o", self.log_location]
-        pid = await execute_command(command)
+        loop = asyncio.get_event_loop()
+        pid = await loop.run_in_executor(
+            None,
+            exececute_command_sync_in_seperate_thread,
+            command,
+            self.working_dir
+        )
         return pid
+    
