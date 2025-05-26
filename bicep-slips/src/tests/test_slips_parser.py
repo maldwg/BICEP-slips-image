@@ -45,8 +45,9 @@ async def test_parse_alerts_valid_and_invalid_data(parser: SlipsParser):
     
     # it is more than there are lines, because the actual flows are in the db.
     # do not get fooled by the json file!
-    assert len(alerts) == 296
-    assert alerts[142].severity == 0.5
+    assert len(alerts) == 280
+    alerts = sorted(alerts, key=lambda alert: (alert.time, alert.source_ip))
+    assert alerts[0].severity == 0.25
 
     os.remove(temporary_alert_file)
 

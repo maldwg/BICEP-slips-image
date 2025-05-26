@@ -9,7 +9,7 @@ class SlipsParser(IDSParser):
     flows_as_hashmap = {}
 
     async def parse_alerts(self):
-        parsed_lines = []   
+        parsed_lines = set()
 
         if not os.path.isfile(self.alert_file_location):
             return parsed_lines
@@ -20,13 +20,13 @@ class SlipsParser(IDSParser):
                     line_as_json = json.loads(line)
                     parsed_line = await self.parse_line(line_as_json)
                     if parsed_line != None:
-                        parsed_lines.append(parsed_line)
+                        parsed_lines.add(parsed_line)
                 except:
                     # print(f"could not parse line {line} \n ... skipping")
                     continue
         # cleanup the alertsfile after parsing to prevent doubled entries
         open(self.alert_file_location, 'w').close()
-        return parsed_lines
+        return list(parsed_lines)
 
     async def parse_line(self, line):
         parsed_line = Alert()
