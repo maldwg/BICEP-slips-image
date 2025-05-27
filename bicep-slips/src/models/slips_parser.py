@@ -3,6 +3,7 @@ import json
 import os 
 import os.path
 from datetime import datetime, timezone
+from ..utils.general_utilities import normalize_timestamp_for_alert
 
 class SlipsParser(IDSParser):
     alert_file_location = "/opt/logs/alerts.json"
@@ -32,7 +33,7 @@ class SlipsParser(IDSParser):
         parsed_line = Alert()
         # get available infor from db
         timestamp = line["StartTime"]
-        parsed_line.time = datetime.fromisoformat(timestamp).astimezone(timezone.utc).replace(tzinfo=None).isoformat()
+        parsed_line.time = await normalize_timestamp_for_alert(datetime.fromisoformat(timestamp).astimezone(timezone.utc).isoformat())
         parsed_line.source_ip = line["Source"][0]["IP"]
         parsed_line.source_port = str(line["Source"][0]["Port"][0])
         parsed_line.destination_ip = line["Target"][0]["IP"]
