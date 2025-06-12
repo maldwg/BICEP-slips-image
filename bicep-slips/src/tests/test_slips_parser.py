@@ -23,15 +23,10 @@ def parser():
 
 @pytest.mark.asyncio
 async def test_parse_alerts_empty_file(parser: SlipsParser):
-    # necessary to mock the db here, otherwise not able to go though the function understandably
-    original_db_file = f"{TEST_FILE_LOCATION}/flows.sqlite"
-    temporary_db_file = f"{TEST_FILE_LOCATION}/flows_temporary.sqlite"
-    shutil.copyfile(original_db_file, temporary_db_file)
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         parser.alert_file_location = temp_file.name
     alerts = await parser.parse_alerts()
     assert alerts == [], "Expected empty list for an empty log file"
-    os.remove(temporary_db_file)
 
 
 @pytest.mark.asyncio
@@ -45,7 +40,7 @@ async def test_parse_alerts_valid_and_invalid_data(parser: SlipsParser):
     
     # it is more than there are lines, because the actual flows are in the db.
     # do not get fooled by the json file!
-    assert len(alerts) == 265
+    assert len(alerts) == 121
     alerts = sorted(alerts, key=lambda alert: (alert.time, alert.source_ip))
     assert alerts[0].severity == 0.25
 
@@ -58,15 +53,11 @@ async def test_parse_alerts_invalid_data(parser: SlipsParser):
     temporary_alert_file = f"{TEST_FILE_LOCATION}/alerts_temporary.json"
     shutil.copy(original_alert_file, temporary_alert_file)
     parser.alert_file_location = temporary_alert_file
-    original_db_file = f"{TEST_FILE_LOCATION}/flows.sqlite"
-    temporary_db_file = f"{TEST_FILE_LOCATION}/flows_temporary.sqlite"
-    shutil.copyfile(original_db_file, temporary_db_file)
     print(parser.alert_file_location)
     alerts = await parser.parse_alerts()
     
     assert len(alerts) == 0
     os.remove(temporary_alert_file)
-    os.remove(temporary_db_file)
 
 
 @pytest.mark.asyncio

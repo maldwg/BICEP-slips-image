@@ -22,7 +22,8 @@ class SlipsParser(IDSParser):
                     parsed_line = await self.parse_line(line_as_json)
                     if parsed_line != None:
                         parsed_lines.add(parsed_line)
-                except:
+                except Exception as e:
+                    #print(f"could not parse line {line} because of error {e}")
                     # print(f"could not parse line {line} \n ... skipping")
                     continue
         # cleanup the alertsfile after parsing to prevent doubled entries
@@ -48,7 +49,11 @@ class SlipsParser(IDSParser):
         parsed_line.type = "Alert"
 
         # parse the nested threat level to a number
-        parsed_line.severity = await self.normalize_threat_levels(await self.get_threat_level(line["Severity"]))
+        alert_severity = str(line["Severity"]) 
+        if "info" in alert_severity.lower():
+            raise Exception("Alert severity was only info --> needs to be disregarded")
+            
+        parsed_line.severity = await self.normalize_threat_levels(await self.get_threat_level(alert_severity))
         return parsed_line
  
     async def get_threat_level(self, severity: str, ):
