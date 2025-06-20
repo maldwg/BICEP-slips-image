@@ -13,7 +13,8 @@ Slips image adapted for BICEP
 
 The image holds every dependency necessary along with the necessary interface implemented, in order to work with the BICEP application
 
-The main BICEP project is available [here](https://github.com/maldwg/BICEP/tree/main)
+The main BICEP project is available [here](https://github.com/maldwg/BICEP/tree/main) <br>
+The official Slips Project is available [here](https://github.com/stratosphereips/StratosphereLinuxIPS)
 
 ## Initialize project
 
