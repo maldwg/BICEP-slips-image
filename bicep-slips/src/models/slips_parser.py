@@ -33,7 +33,7 @@ class SlipsParser(IDSParser):
         parsed_line = Alert()
         try:
             # parse the nested threat level to a number
-            alert_severity = str(line["Severity"]) 
+            alert_severity = str(line["Priority"]) 
             if "info" in alert_severity.lower():
                 raise Exception("Alert severity was only info --> needs to be disregarded")
                 
