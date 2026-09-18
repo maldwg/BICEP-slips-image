@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from ..utils.general_utilities import normalize_timestamp_for_alert
 
 class SlipsParser(IDSParser):
-    alert_file_location = "/opt/logs/alerts.json"
+    alert_file_location = "/opt/logs/alerts/alerts.json"
     flows_as_hashmap = {}
 
     async def parse_alerts(self):
@@ -24,7 +24,6 @@ class SlipsParser(IDSParser):
                         parsed_lines.add(parsed_line)
                 except Exception as e:
                     #print(f"could not parse line {line} because of error {e}")
-                    # print(f"could not parse line {line} \n ... skipping")
                     continue
         # cleanup the alertsfile after parsing to prevent doubled entries
         open(self.alert_file_location, 'w').close()
@@ -32,16 +31,20 @@ class SlipsParser(IDSParser):
 
     async def parse_line(self, line):
         parsed_line = Alert()
-        # get available infor from db
-        timestamp = line["StartTime"]
-        parsed_line.time = await normalize_timestamp_for_alert(datetime.fromisoformat(timestamp).astimezone(timezone.utc).isoformat())
-        parsed_line.source_ip = line["Source"][0]["IP"]
-        parsed_line.source_port = str(line["Source"][0]["Port"][0])
-        parsed_line.destination_ip = line["Target"][0]["IP"]
-        parsed_line.destination_port = str(line["Target"][0]["Port"][0])
+        try:
+            # get available infor from db
+            timestamp = line["StartTime"]
+            parsed_line.time = await normalize_timestamp_for_alert(datetime.fromisoformat(timestamp).astimezone(timezone.utc).isoformat())
+            parsed_line.source_ip = line["Source"][0]["IP"]
+            parsed_line.source_port = str(line["Source"][0]["Port"][0])
+            parsed_line.destination_ip = line["Target"][0]["IP"]
+            parsed_line.destination_port = str(line["Target"][0]["Port"][0])
         # only include alerts that have a chance to be matched to the csv files
         # removing them here does nothing, as they youldn be matched anyways and wouldn't affect the statistics besides unassigned_requests 
-        if not parsed_line.time or not parsed_line.source_ip or not parsed_line.source_port or not parsed_line.destination_ip or not parsed_line.destination_port:
+            if not parsed_line.time or not parsed_line.source_ip or not parsed_line.source_port or not parsed_line.destination_ip or not parsed_line.destination_port:
+                raise Exception("Missing important information in logline")
+        except:
+            print(f"Missing important information in logline {line}")
             raise Exception("Missing important information in logline")
         # get the rest of the information from alerts.json
         parsed_line.message = line["Description"]
@@ -52,6 +55,7 @@ class SlipsParser(IDSParser):
         alert_severity = str(line["Severity"]) 
         if "info" in alert_severity.lower():
             raise Exception("Alert severity was only info --> needs to be disregarded")
+            return None
             
         parsed_line.severity = await self.normalize_threat_levels(await self.get_threat_level(alert_severity))
         return parsed_line

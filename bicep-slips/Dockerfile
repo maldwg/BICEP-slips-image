@@ -8,7 +8,6 @@ FROM ${BASE_IMAGE}:${VERSION}
 RUN apt update -y && apt upgrade -y
 RUN apt-get install software-properties-common  -y
 RUN add-apt-repository ppa:deadsnakes/ppa -y
-# increment this every year to be on the most recent version
 RUN apt install python3.12 -y
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
 
